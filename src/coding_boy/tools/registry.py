@@ -1,8 +1,38 @@
+"""
+该注册模块实现的功能可以概括为：当我们把工具按照一定的规则实现以后（如类型注解清晰，解释说明字段完整等），通过装饰器，能够直接将该函数工具
+的信息收集起来并组装成能够发送给大模型api的形式，这样就省去了每写一个工具都要手动写JSON Schmea的麻烦。
+
+最终产出的就是一个工具信息列表，可以直接作为参数传给大模型api，以及一个工具映射表，方便大模型在发出工具调用请求以后能够直接匹配到要执行的
+函数本身
+"""
+
 import inspect
 import types
 from collections.abc import Callable
 from typing import Annotated, Any, Literal, Union, get_args, get_origin, get_type_hints
 
+TOOL_SCHEMAS: list[dict] = []
+TOOL_FUNCTIONS: dict[str, Callable] = {}
+_ACTIVATED_TOOLS: set[str] = set()
+
+_TOOL_SEARCH_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "tool_search",
+        "description": "搜索可用工具。当你需要某个功能但当前工具列表中没有时，用它按名称/关键词搜索并激活对应工具。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "工具名称或功能关键词，如 shell、web、search",
+                }
+            },
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+    },
+}
 
 _JSON_TYPES: dict[type, str] = {
     str: "string",
@@ -57,8 +87,8 @@ def _annotation_to_schema(annotation: Any) -> dict[str, Any]:
 
     raise TypeError(f"unsupported tool parameter annotation: {annotation!r}")
 
-
-def tool_register(
+# 产出单个工具的JSON Schema
+def build_tool_schema(
     function: Callable[..., Any],
 ) -> dict[str, Any]:
     signature = inspect.signature(function)
@@ -99,3 +129,20 @@ def tool_register(
             "parameters": parameters,
         },
     }
+# 实现工具注册的装饰器
+def tool(function=None, *, deferred=False):
+    def decorator(function):
+        tool_schema = build_tool_schema(function)
+        tool_schema["deferred"] = deferred
+        if tool_schema["function"]["name"] not in [tool["function"]["name"] for tool in TOOL_SCHEMAS]:
+            TOOL_SCHEMAS.append(tool_schema)
+            TOOL_FUNCTIONS[tool_schema["function"]["name"]] = function
+        else:
+            raise Exception("工具列表存在冲突")
+        return function
+    if function is not None:
+        return decorator(function)
+    return decorator
+
+
+
