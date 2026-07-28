@@ -4,7 +4,7 @@ import json
 class FileState:
     def __init__(self, state_file: str | None = None):
         if state_file is None:
-            _base_dir = Path(__file__).resolve().parent.parent
+            _base_dir = Path().cwd()
             state_file = str(_base_dir / ".agent" / "state.json")
         self.state_path = Path(state_file)
         # 文件路径 -> mtime

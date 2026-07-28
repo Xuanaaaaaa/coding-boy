@@ -1,12 +1,31 @@
 from .tools import execute_tool,get_tool_schemas
 import json
+from typing import Optional
+from .prompt import build_dynamic_system_context, build_static_system_prompt, build_user_context_reminder
 
 class coding_boy():
-    def __init__(self,agent_name: str, messages_history: list, client, tool_provider=None):
+    def __init__(self,agent_name: str,
+        client,
+        messages_history: Optional[list] = None,
+        tool_provider=None):
         self.agent_name = agent_name
-        self.messages = messages_history
+        self.messages = messages_history or []
+        if messages_history is None:
+            self.messages.append(
+                {
+                    "role": "system",
+                    "content": f"{build_static_system_prompt()}"
+                }
+            )
+            self.messages.append(
+                {
+                    "role": "system",
+                    "content": f"{build_dynamic_system_context()}"
+                }
+            )
         self.client = client
         self.tool_provider = tool_provider or get_tool_schemas
+        self._is_new_session = messages_history is None
 
     def deal_with_tools(self, tool_use_parts:list[dict]):
         result = {}
@@ -28,7 +47,10 @@ class coding_boy():
 
     def run_turn(self, new_message: str) -> str:
         turns = 0
-        self.messages.append({"role": "user", "content": new_message})
+        if self._is_new_session:
+            self.messages.append({"role": "user", "content": f"{build_user_context_reminder()}\n\n{new_message}"})
+        else:
+            self.messages.append({"role": "user", "content": new_message})
         while turns < 10:
             turns += 1
             content_parts = []
