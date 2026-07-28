@@ -2,31 +2,43 @@ from .tools import execute_tool,get_tool_schemas
 import json
 from typing import Optional
 from .prompt import build_dynamic_system_context, build_static_system_prompt, build_user_context_reminder
-
+from .session import generate_session_id, load_session, save_session
 class coding_boy():
     def __init__(self,agent_name: str,
         client,
-        messages_history: Optional[list] = None,
+        session_id: str | None = None,
         tool_provider=None):
         self.agent_name = agent_name
-        self.messages = messages_history or []
-        if messages_history is None:
-            self.messages.append(
-                {
-                    "role": "system",
-                    "content": f"{build_static_system_prompt()}"
-                }
-            )
-            self.messages.append(
-                {
-                    "role": "system",
-                    "content": f"{build_dynamic_system_context()}"
-                }
-            )
+        self.session_id = session_id or generate_session_id()
         self.client = client
+        self.messages: list[dict] = []
+        if session_id:
+            # 恢复会话
+            loaded_messages = load_session(session_id)
+            if loaded_messages is None:
+                # 会话文件不存在，当作新会话处理
+                self.session_id = generate_session_id()
+                self._init_new_session()
+            else:
+                self.messages = loaded_messages
+                self._is_new_session = False
+        else:
+            self._init_new_session()
         self.tool_provider = tool_provider or get_tool_schemas
-        self._is_new_session = messages_history is None
 
+    def _init_new_session(self):
+        """初始化新会话"""
+        self.messages = []
+        self.messages.append({"role": "system", "content": build_static_system_prompt()})
+        self.messages.append({"role": "system", "content": build_dynamic_system_context()})
+        self._is_new_session = True
+
+    def _auto_save(self):
+        try:
+            save_session(self.session_id, self.messages)
+        except Exception:
+            pass
+    
     def deal_with_tools(self, tool_use_parts:list[dict]):
         result = {}
         for chunk in tool_use_parts:
@@ -84,6 +96,7 @@ class coding_boy():
                 self.messages.append({"role": "assistant",
                     "content": assistant_message,
                 })
+                self._auto_save()
                 return assistant_message
             self.messages.append({"role": "assistant",
                 "content": assistant_message,
@@ -118,5 +131,6 @@ class coding_boy():
                 "content": error_message
             }
         )
+        self._auto_save()
         print(error_message)
         return error_message
