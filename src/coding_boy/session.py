@@ -24,7 +24,7 @@ def save_session(session_id: str, messages: list[dict]) -> None:
         "messages": messages,
         "startTime": start_time,
     }
-    path.write_text(json.dumps(session_data, indent=2))
+    path.write_text(json.dumps(session_data, indent=2, ensure_ascii=False))
 
 def load_session(session_id: str) -> list[dict] | None:
     """加载会话历史消息"""

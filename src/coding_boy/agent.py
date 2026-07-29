@@ -1,8 +1,8 @@
 from .tools import execute_tool,get_tool_schemas
 import json
-from typing import Optional
 from .prompt import build_dynamic_system_context, build_static_system_prompt, build_user_context_reminder
 from .session import generate_session_id, load_session, save_session
+
 class coding_boy():
     def __init__(self,agent_name: str,
         client,

@@ -1,5 +1,6 @@
 import argparse
 from .ui import print_welcome
+from .session import generate_session_id
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="coding-boy", add_help=False)
@@ -44,6 +45,8 @@ def chat_loop(agent):
             continue
         if user_message == "/clear":
             agent.messages = []
-            print("History cleared.")
+            agent.session_id = generate_session_id()
+            agent._init_new_session()
+            print("History cleared. New session started.")
             continue
         agent.run_turn(user_message)

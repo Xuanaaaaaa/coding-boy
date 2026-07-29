@@ -4,12 +4,14 @@ import platform
 import subprocess
 from pathlib import Path
 
+# @include解析的正则表达式
 INCLUDE_REGEX = re.compile(
     r"^@include\s+(\./[^\s]+|~/[^\s]+|/[^\s]+)$",
     re.MULTILINE
 )
-MAX_INCLUDE_DEPTH = 5
+MAX_INCLUDE_DEPTH = 5 # 最多嵌套层数，超过以后不再解析
 
+#系统提示词静态部分，放到最前面始终不变，稳定命中缓存
 STATIC_CORE = """You are Coding Boy, a small coding assistant CLI.
 You help with software engineering tasks using the tools available to you.
 
@@ -31,7 +33,7 @@ You help with software engineering tasks using the tools available to you.
  - Keep responses short and concise. Lead with the answer.
  - Reference code as file_path:line_number."""
 
-
+# @include解析函数
 def resolve_includes(
     content: str,
     base_path: str,
@@ -49,10 +51,10 @@ def resolve_includes(
 
     if visited is None:
         visited = set()
-    if depth >= MAX_INCLUDE_DEPTH:
+    if depth >= MAX_INCLUDE_DEPTH: # 超过最大深度以后，@include语句将会被原样保留
         return content
-    def replace_include(match: re.Match) -> str:
-        raw_path = match.group(1)
+    def replace_include(match: re.Match) -> str: # sub方法中每一个匹配成功的对象都是一个re.Match对象
+        raw_path = match.group(1) # 忽略掉@include部分，取得第一个括号内部的匹配内容部分
         # 解析路径
         if raw_path.startswith("~/"):
             resolved = Path.home() / raw_path[2:]
@@ -82,7 +84,7 @@ def resolve_includes(
             return f"<!-- error reading: {raw_path} -->"
     return INCLUDE_REGEX.sub(replace_include, content)
 
-
+#将项目目录下的./.agent/rules/下的md文件全部读取进来
 def load_rules_dir(directory: str) -> str:
     rules_dir = Path(directory) / ".agent" / "rules"
     if not rules_dir.exists():
@@ -101,6 +103,7 @@ def load_rules_dir(directory: str) -> str:
         return "\n\n## Rules\n" + "\n\n".join(parts)
     return ""
 
+# 从工作目录开始，一层层往上读取所有agent.md文件，后读的放到最前面。同时读取rules文件。
 def load_agent_md() -> str:
     parts: list[str] = []
     d = Path.cwd().resolve()
@@ -117,10 +120,11 @@ def load_agent_md() -> str:
         if parent == d:
             break
         d = parent
-    rules = load_rules_dir(str(Path.cwd()))  # .claude/rules/*.md
+    rules = load_rules_dir(str(Path.cwd()))  # .agent/rules/*.md
     agents_md = "\n\n# Project Instructions (agent.md)\n" + "\n\n---\n\n".join(parts) if parts else ""
     return agents_md + rules
 
+#读取git状态
 def get_git_context() -> str:
     try:
         opts = {"encoding": "utf-8", "timeout": 3, "capture_output": True}
