@@ -61,6 +61,7 @@ class coding_boy():
         turns = 0
         if self._is_new_session:
             self.messages.append({"role": "user", "content": f"{build_user_context_reminder()}\n\n{new_message}"})
+            self._is_new_session = False
         else:
             self.messages.append({"role": "user", "content": new_message})
         while turns < 10:
