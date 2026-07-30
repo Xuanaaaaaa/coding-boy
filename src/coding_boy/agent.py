@@ -2,6 +2,8 @@ from .tools import execute_tool,get_tool_schemas
 import json
 from .prompt import build_dynamic_system_context, build_static_system_prompt, build_user_context_reminder
 from .session import generate_session_id, load_session, save_session
+from .retry import with_retry
+from .ui import print_retry
 
 class coding_boy():
     def __init__(self,agent_name: str,
@@ -57,6 +59,29 @@ class coding_boy():
                 result[index]["function"]["arguments"] += arguments_part
         return result
 
+    def _call_llm(self):
+        content_parts = []
+        tool_use_parts = []
+        tools_list = self.tool_provider()
+        response = self.client.chat.completions.create(
+            model="deepseek-v4-pro",
+            messages=self.messages,
+            stream=True,
+            reasoning_effort="high",
+            extra_body={"thinking": {"type": "enabled"}},
+            tools=tools_list
+        )
+        for chunk in response:
+            content = chunk.choices[0].delta.content
+            tool_use = chunk.choices[0].delta.tool_calls
+            if content:
+                print(content, end="")
+                content_parts.append(content)
+            if tool_use:
+                for part in tool_use or []:
+                    tool_use_parts.append(part.model_dump())
+        return content_parts, tool_use_parts
+
     def run_turn(self, new_message: str) -> str:
         turns = 0
         if self._is_new_session:
@@ -66,26 +91,11 @@ class coding_boy():
             self.messages.append({"role": "user", "content": new_message})
         while turns < 10:
             turns += 1
-            content_parts = []
-            tool_use_parts = []
-            tools_list = self.tool_provider()
-            response = self.client.chat.completions.create(
-                model="deepseek-v4-pro",
-                messages=self.messages,
-                stream=True,
-                reasoning_effort="high",
-                extra_body={"thinking": {"type": "enabled"}},
-                tools=tools_list
+            content_parts, tool_use_parts = with_retry(
+                lambda: self._call_llm(),
+                max_retries=3,
+                on_retry=lambda n, total, reason: print_retry,
             )
-            for chunk in response:
-                content = chunk.choices[0].delta.content
-                tool_use = chunk.choices[0].delta.tool_calls
-                if content:
-                    print(content, end="")
-                    content_parts.append(content)
-                if tool_use:
-                    for part in tool_use or []:
-                        tool_use_parts.append(part.model_dump())
             print("\n", end="")
             assistant_message = "".join(content_parts)
             tool_use_message = self.deal_with_tools(tool_use_parts)

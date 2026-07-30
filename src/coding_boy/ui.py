@@ -60,12 +60,16 @@ def print_info(message: str) -> None:
     """打印普通信息"""
     console.print(f"[dim]{message}[/dim]")
 
+def print_retry(attempt: int, max_retries: int, reason: str) -> None:
+    """打印重试信息"""
+    console.print(f"[yellow]Retry {attempt}/{max_retries}[/yellow][dim]: {reason}[/dim]")
 
 def _truncate(text: str, max_len: int = 500) -> str:
     """截断长文本"""
     if len(text) <= max_len:
         return text
     return text[:max_len] + f"\n  ... ({len(text)} chars total)"
+
 
 
 def _summarize_args(args: dict) -> str:
