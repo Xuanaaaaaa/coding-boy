@@ -86,7 +86,7 @@ def resolve_includes(
 
 #将项目目录下的./.agent/rules/下的md文件全部读取进来
 def load_rules_dir(directory: str) -> str:
-    rules_dir = Path(directory) / ".agent" / "rules"
+    rules_dir = Path(directory) / ".coding-boy" / "rules"
     if not rules_dir.exists():
         return ""
     files = sorted(

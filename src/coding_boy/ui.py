@@ -1,5 +1,4 @@
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
 
@@ -78,3 +77,14 @@ def _summarize_args(args: dict) -> str:
         return ""
     keys = list(args.keys())[:3]  # 只显示前 3 个参数名
     return " ".join(keys)
+
+
+def print_confirmation(command: str) -> None:
+    """打印危险操作确认提示"""
+    console.print()
+    console.print(Panel(
+        f"[red]⚠ Dangerous Operation Detected[/red]\n\n[bold]{command}[/bold]",
+        title="[yellow]Confirmation Required[/yellow]",
+        border_style="yellow",
+        padding=(1, 2)
+    ))

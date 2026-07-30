@@ -4,12 +4,17 @@ from .prompt import build_dynamic_system_context, build_static_system_prompt, bu
 from .session import generate_session_id, load_session, save_session
 from .retry import with_retry
 from .ui import print_retry
+from .permission import PermissionManager
+from .ui import print_info, print_confirmation
 
 class coding_boy():
     def __init__(self,agent_name: str,
         client,
         session_id: str | None = None,
-        tool_provider=None):
+        tool_provider=None,
+        permission_mode: str = "default",
+        _plan_file_path: str | None = None,
+    ):
         self.agent_name = agent_name
         self.session_id = session_id or generate_session_id()
         self.client = client
@@ -27,6 +32,9 @@ class coding_boy():
         else:
             self._init_new_session()
         self.tool_provider = tool_provider or get_tool_schemas
+        self.permission_mode = permission_mode
+        self._plan_file_path = _plan_file_path
+        self._confirmed_paths: set[str] = set()
 
     def _init_new_session(self):
         """初始化新会话"""
@@ -82,6 +90,15 @@ class coding_boy():
                     tool_use_parts.append(part.model_dump())
         return content_parts, tool_use_parts
 
+    def _confirm_dangerous(self, command: str) -> bool:
+        """确认危险操作"""
+        print_confirmation(command)
+        try:
+            answer = input("  Allow? (y/n): ")
+            return answer.lower().startswith("y")
+        except EOFError:
+            return False
+    
     def run_turn(self, new_message: str) -> str:
         turns = 0
         if self._is_new_session:
@@ -127,6 +144,25 @@ class coding_boy():
                         }
                     )
                     continue
+                perm = PermissionManager.check_permission(name, args, self.permission_mode, self._plan_file_path)
+                if perm["action"] == "deny":
+                    print_info(f"Denied: {perm.get('message', '')}")
+                    self.messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "content": f"Action denied: {perm.get('message', '')}"
+                    })
+                    continue
+                if perm["action"] == "confirm" and perm.get("message") and perm["message"] not in self._confirmed_paths:
+                    confirmed = self._confirm_dangerous(perm["message"])
+                    if not confirmed:
+                        self.messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "content": "User denied this action."
+                        })
+                        continue
+                    self._confirmed_paths.add(perm["message"])
                 tool_result = execute_tool(name, args)
                 self.messages.append(
                     {
@@ -145,3 +181,4 @@ class coding_boy():
         self._auto_save()
         print(error_message)
         return error_message
+        
