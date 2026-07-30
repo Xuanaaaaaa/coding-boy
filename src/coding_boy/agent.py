@@ -94,7 +94,7 @@ class coding_boy():
             content_parts, tool_use_parts = with_retry(
                 lambda: self._call_llm(),
                 max_retries=3,
-                on_retry=lambda n, total, reason: print_retry,
+                on_retry=print_retry,
             )
             print("\n", end="")
             assistant_message = "".join(content_parts)
