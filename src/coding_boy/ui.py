@@ -1,6 +1,7 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.prompt import Prompt
 
 console = Console()
 
@@ -32,6 +33,9 @@ def print_welcome():
     tips.append("  • Type ", style="dim")
     tips.append("/clear", style="cyan")
     tips.append(" to clear conversation history\n", style="dim")
+    tips.append("  • Type ", style="dim")
+    tips.append("/mode", style="cyan")
+    tips.append(" to switch permission mode\n", style="dim")
 
     console.print()
     console.print(Panel(title, subtitle=subtitle, border_style="cyan", padding=(1, 2)))
@@ -88,3 +92,32 @@ def print_confirmation(command: str) -> None:
         border_style="yellow",
         padding=(1, 2)
     ))
+
+
+# 权限模式描述
+PERMISSION_MODES = {
+    "default": "Normal mode. Dangerous operations require confirmation.",
+    "plan": "Plan mode. Only edits to the plan file are allowed.",
+    "acceptEdits": "Auto-accept edits. Dangerous commands still require confirmation.",
+    "dontAsk": "Silent mode. Dangerous operations are auto-denied without prompting.",
+    "bypassPermissions": "Bypass all checks. Use with caution!",
+}
+
+
+def select_permission_mode() -> str:
+    """让用户选择权限模式"""
+    console.print()
+    console.print("[bold yellow]Permission Modes:[/bold yellow]")
+    for i, (mode, desc) in enumerate(PERMISSION_MODES.items(), 1):
+        console.print(f"  [cyan]{i}.[/cyan] [bold]{mode}[/bold]: {desc}")
+    console.print()
+
+    choices = [str(i) for i in range(1, len(PERMISSION_MODES) + 1)]
+    choice = Prompt.ask(
+        "Select mode",
+        choices=choices,
+        default="1"
+    )
+
+    mode_names = list(PERMISSION_MODES.keys())
+    return mode_names[int(choice) - 1]

@@ -1,7 +1,6 @@
 import argparse
-from .ui import print_welcome
+from .ui import print_welcome, select_permission_mode, print_error, print_info
 from .session import generate_session_id
-from .ui import print_error
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="coding-boy", add_help=False)
@@ -49,6 +48,11 @@ def chat_loop(agent):
             agent.session_id = generate_session_id()
             agent._init_new_session()
             print("History cleared. New session started.")
+            continue
+        if user_message == "/mode":
+            new_mode = select_permission_mode()
+            agent.permission_mode = new_mode
+            print_info(f"Switched to {new_mode} mode")
             continue
         try:
             agent.run_turn(user_message)

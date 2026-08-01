@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-from .cli import chat_loop, parse_args
+from .cli import chat_loop, parse_args, _resolve_permission_mode
 from .agent import coding_boy
 import sys
 from .session import get_latest_session_id 
@@ -16,6 +16,8 @@ def main():
         print("\nOptions:")
         print("  --yolo, -y        Bypass all permission checks")
         print("  --plan            Plan mode")
+        print("  --accept-edits    all edits accepted")
+        print("  --dont-ask        auto deny confirm request")
         print("  --model, -m       Model to use")
         print("  --api-base        API base URL")
         print("  --resume          Resume latest session")
@@ -34,15 +36,16 @@ def main():
         api_key = api_key,
         base_url = base_url
     )
+    permission_mode = _resolve_permission_mode(args)
     if args.resume:
         session_id = get_latest_session_id()
         if session_id:
-            agent = coding_boy("master", client, session_id=session_id)
+            agent = coding_boy("master", client, session_id=session_id, permission_mode=permission_mode)
         else:
             print("No session to resume")
-            agent = coding_boy("master", client)  # 新建会话
+            agent = coding_boy("master", client, permission_mode=permission_mode)  # 新建会话
     else:
-        agent = coding_boy("master", client)
+        agent = coding_boy("master", client, permission_mode=permission_mode)
     
     if args.prompt:
         prompt = " ".join(args.prompt)
