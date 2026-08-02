@@ -2,6 +2,8 @@ import argparse
 from .ui import print_welcome, select_permission_mode, print_error, print_info
 from .session import generate_session_id
 
+SENTINEL = "[已完成对话压缩，上下文见上方总结。]"
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="coding-boy", add_help=False)
     parser.add_argument("prompt", nargs="*")
@@ -53,6 +55,14 @@ def chat_loop(agent):
             new_mode = select_permission_mode()
             agent.permission_mode = new_mode
             print_info(f"Switched to {new_mode} mode")
+            continue
+        if user_message == "/compact":
+            agent.messages.append({"role": "assistant", "content": SENTINEL})
+            compacted = agent.compact_conversation()
+            if agent.messages and agent.messages[-1].get("content") == SENTINEL:
+                agent.messages.pop()
+            if compacted:
+                print_info("Conversation compacted")
             continue
         try:
             agent.run_turn(user_message)
