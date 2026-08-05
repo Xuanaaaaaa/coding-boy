@@ -142,7 +142,15 @@ class coding_boy():
         self.messages.append({"role": "assistant", "content": "了解，我现在知道了对话总结的结果."})
 
         if last_user_msg.get("role") == "user":
-            self.messages.append(last_user_msg)
+            self.messages.append({
+                "role": "user",
+                "content": (
+                    f"{build_user_context_reminder()}\n\n"
+                    f"{last_user_msg.get('content', '')}"
+                ),
+            })
+            self._is_new_session = False
+        
         self.last_input_token_count = 0
         return True
 

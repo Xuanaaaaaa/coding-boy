@@ -63,6 +63,7 @@ def chat_loop(agent):
                 agent.messages.pop()
             if compacted:
                 print_info("Conversation compacted")
+                agent._auto_save()
             continue
         try:
             agent.run_turn(user_message)
